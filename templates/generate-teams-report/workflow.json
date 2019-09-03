@@ -82,13 +82,13 @@
                 "type": "packageTask",
                 "displayName": "Send Email",
                 "description": "Sends an email containing the report.",
-                "package": "voleer/office-365@1.4.8",
+                "package": "voleer/office-365@1.5.0-develop.yshen",
                 "task": "send-email",
                 "inputs": {
                     "office365EmailCredentialsName": "${inputForm.outputs.office365EmailCredentialsName}",
                     "emailToAddresses": "${inputForm.outputs.reportDestinationEmailAddress}",
                     "emailSubject": "Teams Report",
-                    "emailBodyContentsFileName": "Hello, this is your teams report",
+                    "emailBodyText": "Hello, this is your teams report",
                     "attachment1FileName": "TeamsReport.zip",
                     "attachment1FileContentsFileName": "${compressReportAndProtectWithPassword.outputs.zipFileContentsFileName}"
                 }

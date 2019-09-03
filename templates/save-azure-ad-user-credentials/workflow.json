@@ -1,0 +1,207 @@
+{
+    "apiVersion": "v1",
+    "inputs": {},
+    "body": {
+        "name": "root",
+        "description": "The main body.",
+        "type": "sequence",
+        "items": [
+            {
+                "name": "inputForm",
+                "type": "form",
+                "displayName": "Input Form",
+                "description": "The input form.",
+                "components": [
+                    {
+                        "name": "credentialName",
+                        "type": "textInput",
+                        "displayName": "Credential Name",
+                        "description": "The name of the credential.",
+                        "required": true,
+                        "placeholder": "Azure AD User Credentials",
+                        "label": "Please provide the name for this set of credentials."
+                    },
+                    {
+                        "name": "username",
+                        "type": "textInput",
+                        "displayName": "Username",
+                        "description": "The username",
+                        "required": true,
+                        "placeholder": "voleer@bitlandia.co",
+                        "label": "Please provide the username."
+                    },
+                    {
+                        "name": "password",
+                        "type": "textInput",
+                        "displayName": "Password",
+                        "description": "The password",
+                        "required": true,
+                        "defaultValue": "",
+                        "label": "Please provide the password.",
+                        "mask": true
+                    },
+                    {
+                        "name": "verifyLoginAgainstAzure",
+                        "type": "select",
+                        "displayName": "Verify Login against Azure?",
+                        "description": "Select whether to verify the credentials for login against Azure.",
+                        "required": true,
+                        "defaultSelected": "no",
+                        "label": "Please select whether to verify the credentials for login against Azure.",
+                        "options": [
+                            {
+                                "id": "yes",
+                                "label": "Yes",
+                                "value": "Yes"
+                            },
+                            {
+                                "id": "no",
+                                "label": "No",
+                                "value": "No"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "verifyLoginAgainstAzureAD",
+                        "type": "select",
+                        "displayName": "Verify Login against Azure AD?",
+                        "description": "Select whether to verify the credentials for login against Azure AD.",
+                        "required": true,
+                        "defaultSelected": "no",
+                        "label": "Please select whether to verify the credentials for login against Azure AD.",
+                        "options": [
+                            {
+                                "id": "yes",
+                                "label": "Yes",
+                                "value": "Yes"
+                            },
+                            {
+                                "id": "no",
+                                "label": "No",
+                                "value": "No"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "verifyLoginAgainstAzureRM",
+                        "type": "select",
+                        "displayName": "Verify Login against Azure RM?",
+                        "description": "Select whether to verify the credentials for login against Azure RM.",
+                        "required": true,
+                        "defaultSelected": "no",
+                        "label": "Please select whether to verify the credentials for login against Azure RM.",
+                        "options": [
+                            {
+                                "id": "yes",
+                                "label": "Yes",
+                                "value": "Yes"
+                            },
+                            {
+                                "id": "no",
+                                "label": "No",
+                                "value": "No"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "verifyLoginAgainstExchangeOnline",
+                        "type": "select",
+                        "displayName": "Verify Login against Exchange Online?",
+                        "description": "Select whether to verify the credentials for login against Exchange Online.",
+                        "required": true,
+                        "defaultSelected": "no",
+                        "label": "Please select whether to verify the credentials for login against Exchange Online.",
+                        "options": [
+                            {
+                                "id": "yes",
+                                "label": "Yes",
+                                "value": "Yes"
+                            },
+                            {
+                                "id": "no",
+                                "label": "No",
+                                "value": "No"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "verifyLoginAgainstMSOnline",
+                        "type": "select",
+                        "displayName": "Verify Login against MS Online?",
+                        "description": "Select whether to verify the credentials for login against MS Online.",
+                        "required": true,
+                        "defaultSelected": "yes",
+                        "label": "Please select whether to verify the credentials for login against MS Online.",
+                        "options": [
+                            {
+                                "id": "yes",
+                                "label": "Yes",
+                                "value": "Yes"
+                            },
+                            {
+                                "id": "no",
+                                "label": "No",
+                                "value": "No"
+                            }
+                        ]
+                    },
+                    {
+                        "name": "verifyLoginAgainstOffice365SecurityAndCompliance",
+                        "type": "select",
+                        "displayName": "Verify Login against Office 365 Security and Compliance?",
+                        "description": "Select whether to verify the credentials for login against Office 365 Security and Compliance.",
+                        "required": true,
+                        "defaultSelected": "no",
+                        "label": "Please select whether to verify the credentials for login against Office 365 Security and Compliance.",
+                        "options": [
+                            {
+                                "id": "yes",
+                                "label": "Yes",
+                                "value": "Yes"
+                            },
+                            {
+                                "id": "no",
+                                "label": "No",
+                                "value": "No"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "saveAzureADUserCredentials",
+                "type": "packageTask",
+                "displayName": "Save Azure AD User Credentials",
+                "description": "Saves the Azure AD user credentials.",
+                "package": "yixiao001/microsoft-teams@0.1.0",
+                "task": "save-azure-ad-user-credentials",
+                "inputs": {
+                    "credentialName": "${inputForm.outputs.credentialName}",
+                    "username": "${inputForm.outputs.username}",
+                    "password": "${inputForm.outputs.password}",
+                    "verifyLoginAgainstAzure": "${inputForm.outputs.verifyLoginAgainstAzure}",
+                    "verifyLoginAgainstAzureAD": "${inputForm.outputs.verifyLoginAgainstAzureAD}",
+                    "verifyLoginAgainstAzureRM": "${inputForm.outputs.verifyLoginAgainstAzureRM}",
+                    "verifyLoginAgainstExchangeOnline": "${inputForm.outputs.verifyLoginAgainstExchangeOnline}",
+                    "verifyLoginAgainstMSOnline": "${inputForm.outputs.verifyLoginAgainstMSOnline}",
+                    "verifyLoginAgainstOffice365SecurityAndCompliance": "${inputForm.outputs.verifyLoginAgainstOffice365SecurityAndCompliance}"
+                }
+            },
+            {
+                "name": "verificationResults",
+                "type": "form",
+                "displayName": "Verification Results",
+                "description": "Displays the verification results.",
+                "components": [
+                    {
+                        "name": "verificationResults",
+                        "type": "paragraph",
+                        "displayName": "Verification Results",
+                        "description": "Displays the verification results.",
+                        "content": "# Verification Results\n\n${saveAzureADUserCredentials.outputs.verificationResultsMarkdown}"
+                    }
+                ]
+            }
+        ]
+    }
+}

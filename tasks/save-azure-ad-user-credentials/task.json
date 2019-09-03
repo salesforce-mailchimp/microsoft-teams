@@ -1,0 +1,98 @@
+{
+    "apiVersion": "v1",
+    "displayName": "Save Azure AD User Credentials",
+    "description": "Saves a set of Azure AD user credentials.",
+    "inputs": [
+        {
+            "name": "credentialName",
+            "displayName": "Credentials Name",
+            "description": "The name used to save the credentials.",
+            "required": true
+        },
+        {
+            "name": "username",
+            "displayName": "Username",
+            "description": "The username.",
+            "required": true
+        },
+        {
+            "name": "password",
+            "displayName": "Password",
+            "description": "The password.",
+            "required": true
+        },
+        {
+            "name": "verifyLoginAgainstAzure",
+            "displayName": "Verify Login against Azure?",
+            "description": "Select whether to verify the credentials for login against Azure.",
+            "required": false
+        },
+        {
+            "name": "verifyLoginAgainstAzureAD",
+            "displayName": "Verify Login against Azure AD?",
+            "description": "Select whether to verify the credentials for login against Azure AD.",
+            "required": false
+        },
+        {
+            "name": "verifyLoginAgainstAzureRM",
+            "displayName": "Verify Login against Azure RM?",
+            "description": "Select whether to verify the credentials for login against Azure RM.",
+            "required": false
+        },
+        {
+            "name": "verifyLoginAgainstExchangeOnline",
+            "displayName": "Verify Login against Exchange Online?",
+            "description": "Select whether to verify the credentials for login against Exchange Online.",
+            "required": false
+        },
+        {
+            "name": "verifyLoginAgainstMSOnline",
+            "displayName": "Verify Login against MS Online?",
+            "description": "Select whether to verify the credentials for login against MS Online.",
+            "required": false
+        },
+        {
+            "name": "verifyLoginAgainstOffice365SecurityAndCompliance",
+            "displayName": "Verify Login against Office 365 Security and Compliance Center?",
+            "description": "Select whether to verify the credentials for login against Office 365 Security and Compliance Center.",
+            "required": false
+        }
+    ],
+    "outputs": [
+        {
+            "name": "verificationAgainstAzureResult",
+            "displayName": "Verification Against Azure Result",
+            "description": "The result of verifying the credentials against Azure."
+        },
+        {
+            "name": "verificationAgainstAzureADResult",
+            "displayName": "Verification Against Azure AD Result",
+            "description": "The result of verifying the credentials against Azure AD."
+        },
+        {
+            "name": "verificationAgainstAzureRMResult",
+            "displayName": "Verification Against Azure RM Result",
+            "description": "The result of verifying the credentials against Azure RM."
+        },
+        {
+            "name": "verificationAgainstExchangeOnlineResult",
+            "displayName": "Verification Against Exchange Online Result",
+            "description": "The result of verifying the credentials against Exchange Online."
+        },
+        {
+            "name": "verificationAgainstMSOnlineResult",
+            "displayName": "Verification Against MS Online Result",
+            "description": "The result of verifying the credentials against MS Online."
+        },
+        {
+            "name": "verificationAgainstOffice365SecurityAndComplianceResult",
+            "displayName": "Verification Against Office 365 Security and Compliance Center Result",
+            "description": "The result of verifying the credentials against Office 365 Security and Compliance Center."
+        },
+        {
+            "name": "verificationResultsMarkdown",
+            "displayName": "Verification Results Markdown",
+            "description": "A markdown-formatted string containing the verification results."
+        }
+    ]
+}
