@@ -1,0 +1,17 @@
+{
+  "apiVersion": "1.0.0",
+  "name": "microsoft-teams",
+  "displayName": "Microsoft Teams",
+  "description": "Tasks and templates for Microsoft Teams.",
+  "version": "0.1.0",
+  "publisher": "yixiao001",
+  "keywords": [
+    "it",
+    "automation"
+  ],
+  "license": "MIT",
+  "type": "powershell",
+  "powershell": {
+    "engine": "5.1"
+  }
+}

@@ -1,0 +1,98 @@
+{
+    "apiVersion": "v1",
+    "inputs": {},
+    "body": {
+        "name": "root",
+        "description": "Sequence of steps.",
+        "type": "sequence",
+        "items": [
+            {
+                "name": "inputForm",
+                "type": "form",
+                "displayName": "Inputs",
+                "description": "Collects input from the user.",
+                "components": [
+                    {
+                        "name": "instructions",
+                        "type": "paragraph",
+                        "description": "Instructions for something",
+                        "content": "Please provide the following input data"
+                    },
+                    {
+                        "name": "office365AdminCredentialsName",
+                        "type": "textInput",
+                        "displayName": "Office 365 Credentials Name",
+                        "description": "Office 365 Credentials Name",
+                        "required": true,
+                        "label": "Please provide the name of the saved Office 365 admin credentials"
+                    },
+                    {
+                        "name": "office365EmailCredentialsName",
+                        "type": "textInput",
+                        "displayName": "Office 365 Credentials Name",
+                        "description": "Office 365 Credentials Name",
+                        "required": true,
+                        "label": "Please provide the name of the saved Office 365 email credentials"
+                    },
+                    {
+                        "name": "reportDestinationEmailAddress",
+                        "type": "textInput",
+                        "displayName": "reportDestinationEmailAddress",
+                        "description": "reportDestinationEmailAddress",
+                        "required": true,
+                        "label": "Please provide the report destination email address."
+                    },
+                    {
+                        "name": "reportProtectionPassword",
+                        "type": "textInput",
+                        "displayName": "reportProtectionPassword",
+                        "description": "reportProtectionPassword",
+                        "required": true,
+                        "label": "Please provide the report protection password.",
+                        "mask": true
+                    }
+                ]
+            },
+            {
+                "name": "generateReport",
+                "type": "packageTask",
+                "displayName": "Generate Report",
+                "description": "Generates a report.",
+                "package": "yixiao001/microsoft-teams@0.1.0",
+                "task": "generate-teams-report",
+                "inputs": {
+                    "office365CredentialsName": "${inputForm.outputs.office365AdminCredentialsName}"
+                }
+            },
+            {
+                "name": "compressReportAndProtectWithPassword",
+                "type": "packageTask",
+                "displayName": "Compress Report and Protect with Password",
+                "description": "Compresses the report and protects it with a password.",
+                "package": "voleer/office-365@1.4.4",
+                "task": "compress-files",
+                "inputs": {
+                  "file1Name": "TeamsReport.xlsx",
+                  "file1ContentsFileName": "${generateReport.outputs.teamsReportContentsFileName}",
+                  "password": "${inputForm.outputs.reportProtectionPassword}"
+                }
+              },
+            {
+                "name": "sendEmail",
+                "type": "packageTask",
+                "displayName": "Send Email",
+                "description": "Sends an email containing the report.",
+                "package": "voleer/office-365@1.4.8",
+                "task": "send-email",
+                "inputs": {
+                    "office365EmailCredentialsName": "${inputForm.outputs.office365EmailCredentialsName}",
+                    "emailToAddresses": "${inputForm.outputs.reportDestinationEmailAddress}",
+                    "emailSubject": "Teams Report",
+                    "emailBodyContentsFileName": "Hello, this is your teams report",
+                    "attachment1FileName": "TeamsReport.zip",
+                    "attachment1FileContentsFileName": "${compressReportAndProtectWithPassword.outputs.zipFileContentsFileName}"
+                }
+            }
+        ]
+    }
+}
