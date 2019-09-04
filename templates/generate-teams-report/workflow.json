@@ -58,7 +58,7 @@
                 "type": "packageTask",
                 "displayName": "Generate Report",
                 "description": "Generates a report.",
-                "package": "yixiao001/microsoft-teams@0.1.0",
+                "package": "yixiao001/microsoft-teams@0.1.1",
                 "task": "generate-teams-report",
                 "inputs": {
                     "office365CredentialsName": "${inputForm.outputs.office365AdminCredentialsName}"
@@ -82,7 +82,7 @@
                 "type": "packageTask",
                 "displayName": "Send Email",
                 "description": "Sends an email containing the report.",
-                "package": "voleer/office-365@1.5.0-develop.yshen",
+                "package": "voleer/office-365@1.5.0",
                 "task": "send-email",
                 "inputs": {
                     "office365EmailCredentialsName": "${inputForm.outputs.office365EmailCredentialsName}",

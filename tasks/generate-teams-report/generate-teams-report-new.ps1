@@ -31,6 +31,9 @@ $credentials = [PSCredential]::new(
 Write-Information "Connecting"
 Connect-MicrosoftTeams -Credential $credentials
 
+Connect-MicrosoftTeamsAdminAccount -endpoint $Office365AdministrativeCredentials
+$token = Get-MicrosoftGraphAuthenticationToken -endpoint $MicroSoftGraphCredentials
+
 Write-Information "Retrieving teams."
 $allTeams = Get-Team
 
@@ -45,25 +48,80 @@ $allUsers = @()
 $maxNumberOfTeams = 250
 
 foreach ($team in $allTeams) {
-    if ([String]::IsNullOrWhiteSpace($team.GroupId)) {
-        Write-Warning $team
-        continue
-    }
     if ($team.Visibility -eq "Public") {
         $numberOfPublicTeams++
     }
     else {
         $numberOfPrivateTeams++
     }
-    Write-Information "Retrieving channels for $($team.DisplayName)."
+
+    Write-Information "Retrieving file information for '$($team.DisplayName)'"
+    $invokeWebRequestParams = @{
+        Uri     = "https://graph.microsoft.com/v1.0/groups/$($team.GroupId)/drive/root/children"
+        Method  = "GET"
+        Headers = @{
+            Authorization = "Bearer $($token)"
+        }
+    }
+    $response = Invoke-RestMethod @invokeWebRequestParams
+    $allFileInformation = $response.Value
+
+    Write-Information "Retrieving channels in '$($team.DisplayName)'."
     $teamChannels = Get-TeamChannel -GroupId $team.GroupId
     foreach ($channel in $teamChannels) {
         $channel | Add-Member -NotePropertyName "Team" -NotePropertyValue $team.DisplayName
         $allChannels += $channel
+
+        $teamFileInformation = $allFileInformation | Where-Object {$_.name -eq $channel.DisplayName}
+        $channel | Add-Member -NotePropertyName "TotalFileSize" -NotePropertyValue $teamFileInformation.size
+        $channel | Add-Member -NotePropertyName "FileLastModifiedTime" -NotePropertyValue $teamFileInformation.lastModifiedDateTime
+
+        Write-Information "Retrieving chat information for channel $($channel.DisplayName)"
+        $lastChatTime = (Get-Date).AddYears(-100)
+        $invokeWebRequestParams = @{
+            Uri     = "https://graph.microsoft.com/beta/teams/$($team.GroupId)/channels/$($channel.Id)/messages"
+            Method  = "GET"
+            Headers = @{
+                Authorization = "Bearer $($adminToken)"
+            }
+        }
+
+        try{
+            $response = Invoke-RestMethod @invokeWebRequestParams
+            $chatCount = $response.'@odata.count'
+            $messages = $response.value
+        }
+        catch {
+            # 404 means there isn't any chat message
+        }
+
+        foreach($message in $messages) {
+            $messageTime = Get-Date -Date $message.createdDateTime
+            if($messageTime -gt $lastChatTime) {
+                $lastChatTime = $messageTime
+            }
+            $invokeWebRequestParams = @{
+                Uri     = "https://graph.microsoft.com/beta/teams/$($team.GroupId)/channels/$($channel.Id)/messages/$($message.Id)/replies"
+                Method  = "GET"
+                Headers = @{
+                    Authorization = "Bearer $($adminToken)"
+                }
+            }
+            $response = Invoke-RestMethod @invokeWebRequestParams
+
+            if($response.'@odata.count' -gt 0) {
+                $replyTime = Get-Date -Date $response.value[0].createdDateTime
+                if($replyTime -gt $lastChatTime) {
+                    $lastChatTime = $replyTime
+                }
+            }
+        }
+
+        $channel | Add-Member -NotePropertyName "LastChatTime" -NotePropertyValue $lastChatTime -Force
     }
     #$team | Add-Member -NotePropertyName "Channels" -NotePropertyValue $teamChannels -Force
     $team | Add-Member -NotePropertyName "NumberOfChannels" -NotePropertyValue $teamChannels.Length -Force
-    Write-Information "Retrieving users for $($team.DisplayName)."
+    Write-Information "Retrieving users in '$($team.DisplayName)'."
     $teamUsers = Get-TeamUser -GroupId $team.GroupId
     foreach ($user in $teamUsers) {
         $user | Add-Member -NotePropertyName "Team" -NotePropertyValue $team.DisplayName
@@ -72,6 +130,8 @@ foreach ($team in $allTeams) {
     #$externalUsers = $teamUsers | Where-Object {$_.User -like "*#EXT#*"}
     #$team | Add-Member -NotePropertyName "ExternalUsers" -NotePropertyValue $externalUsers -Force
     #$team | Add-Member -NotePropertyName "NumberOfExternalUsers" -NotePropertyValue $externalUsers.Length -Force
+
+
 }
 
 # Confirmed
@@ -91,6 +151,9 @@ $numberOfChannelsDistribution = @($1To50, $51To100, $101To150, $151Plus)
 $templateFilePath = "$($PSScriptRoot)\TeamsReportTemplate.xlsx"
 $reportFilePath = "$($PSScriptRoot)\TeamsReport.xlsx"
 
+$templateFilePath = "C:\Users\yshen\Desktop\TeamsReportTemplate.xlsx"
+$reportFilePath = "C:\Users\yshen\DesktopTeamsReport.xlsx"
+
 Copy-Item -Path $templateFilePath -Destination $reportFilePath
 
 $excelPackage = $allUsers | Export-Excel -Path $reportFilePath -WorksheetName "Users" -PassThru
@@ -102,8 +165,8 @@ $excelPackage = $numberOfPublicTeams | Export-Excel -ExcelPackage $excelPackage 
 $excelPackage = $numberOfPrivateTeams | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Dashboard" -PassThru -StartRow 5 -StartColumn 6
 $excelPackage = $numberOfExternalUsers | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Dashboard" -PassThru -StartRow 5 -StartColumn 8
 
-Close-ExcelPackage -ExcelPackage $excelPackage #-Show
-Write-Information "Finished"
+Close-ExcelPackage -ExcelPackage $excelPackage -Show
+Write-Information "Finished."
 
 # Store the Excel workbook base64 encoded bytes in a file in the instance scope
 $excelWorkbookContentsFileName = "$(New-Guid).txt"
