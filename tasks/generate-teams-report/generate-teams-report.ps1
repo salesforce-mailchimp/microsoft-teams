@@ -223,7 +223,7 @@ $excelPackage = $numberOfPublicTeams | Export-Excel -ExcelPackage $excelPackage 
 $excelPackage = $numberOfPrivateTeams | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Dashboard" -PassThru -StartRow 5 -StartColumn 6
 $excelPackage = $numberOfExternalUsers | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Dashboard" -PassThru -StartRow 5 -StartColumn 8
 
-Close-ExcelPackage -ExcelPackage $excelPackage -Show
+Close-ExcelPackage -ExcelPackage $excelPackage #-Show
 Write-Information "Finished."
 
 # Store the Excel workbook base64 encoded bytes in a file in the instance scope
