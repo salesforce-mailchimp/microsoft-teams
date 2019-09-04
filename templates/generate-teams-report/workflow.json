@@ -27,6 +27,15 @@
                         "label": "Please provide the name of the saved Office 365 admin credentials"
                     },
                     {
+                        "name": "microsoftGraphCredentialsName",
+                        "type": "textInput",
+                        "displayName": "Microsoft Graph Credentials Name",
+                        "description": "The name of the saved Microsoft Graph credentials.",
+                        "required": true,
+                        "placeholder": "Microsoft Graph Credentials",
+                        "label": "Please provide the name for the previously saved Microsoft Graph credentials."
+                    },
+                    {
                         "name": "office365EmailCredentialsName",
                         "type": "textInput",
                         "displayName": "Office 365 Credentials Name",
@@ -58,10 +67,11 @@
                 "type": "packageTask",
                 "displayName": "Generate Report",
                 "description": "Generates a report.",
-                "package": "yixiao001/microsoft-teams@0.1.1",
+                "package": "yixiao001/microsoft-teams@0.1.2",
                 "task": "generate-teams-report",
                 "inputs": {
-                    "office365CredentialsName": "${inputForm.outputs.office365AdminCredentialsName}"
+                    "office365CredentialsName": "${inputForm.outputs.office365AdminCredentialsName}",
+                    "microsoftGraphCredentialsName": "${inputForm.outputs.microsoftGraphCredentialsName}"
                 }
             },
             {

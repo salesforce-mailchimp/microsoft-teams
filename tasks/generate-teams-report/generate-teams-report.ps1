@@ -1,3 +1,4 @@
+
 param (
     <#
         Office 365 Credentials Name
@@ -26,6 +27,8 @@ $credentials = [PSCredential]::new(
     $office365Username,
     ($office365Password | ConvertTo-SecureString -AsPlainText -Force)
 )
+
+
 
 # Connecting
 Write-Information "Connecting"

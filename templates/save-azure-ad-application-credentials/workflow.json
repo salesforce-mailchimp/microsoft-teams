@@ -1,0 +1,107 @@
+{
+    "apiVersion": "v1",
+    "inputs": {},
+    "body": {
+        "name": "root",
+        "description": "The main body.",
+        "type": "sequence",
+        "items": [
+            {
+                "name": "inputForm",
+                "type": "form",
+                "displayName": "Input Form",
+                "description": "The input form.",
+                "components": [
+                    {
+                        "name": "credentialsName",
+                        "type": "textInput",
+                        "displayName": "Credentials Name",
+                        "description": "The name of the credentials.",
+                        "required": true,
+                        "placeholder": "Azure AD Application Credentials",
+                        "label": "Please provide the name for this set of credentials."
+                    },
+                    {
+                        "name": "applicationId",
+                        "type": "textInput",
+                        "displayName": "Application ID",
+                        "description": "The application ID.",
+                        "required": true,
+                        "defaultValue": "",
+                        "label": "Please provide the application ID."
+                    },
+                    {
+                        "name": "clientSecret",
+                        "type": "textInput",
+                        "displayName": "Client Secret",
+                        "description": "The client secret.",
+                        "required": true,
+                        "defaultValue": "",
+                        "label": "Please provide the client secret.",
+                        "mask": true
+                    },
+                    {
+                        "name": "tenantDomain",
+                        "type": "textInput",
+                        "displayName": "Tenant Domain",
+                        "description": "The tenant domain.",
+                        "required": true,
+                        "placeholder": "bitlandia.co",
+                        "label": "Please provide the domain of the tenant."
+                    },
+                    {
+                        "name": "verifyAgainstMicrosoftGraph",
+                        "type": "select",
+                        "displayName": "Verify Against Microsoft Graph?",
+                        "description": "Select whether to verify the provided credentials against Microsoft Graph.",
+                        "required": true,
+                        "defaultSelected": "yes",
+                        "label": "Please select whether to verify the provided credentials against Microsoft Graph.",
+                        "options": [
+                            {
+                                "id": "yes",
+                                "label": "Yes",
+                                "value": "Yes"
+                            },
+                            {
+                                "id": "no",
+                                "label": "No",
+                                "value": "No"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "saveAzureADApplicationCredentials",
+                "type": "packageTask",
+                "displayName": "Save Azure AD Application Credentials",
+                "description": "Saves the Azure AD application credentials.",
+                "package": "yixiao001/microsoft-teams@0.1.2",
+                "task": "save-azure-ad-application-credentials",
+                "inputs": {
+                    "credentialsName": "${inputForm.outputs.credentialsName}",
+                    "applicationId": "${inputForm.outputs.applicationId}",
+                    "clientSecret": "${inputForm.outputs.clientSecret}",
+                    "tenantDomain": "${inputForm.outputs.tenantDomain}",
+                    "verifyAgainstMicrosoftGraph": "${inputForm.outputs.verifyAgainstMicrosoftGraph}"
+                }
+            },
+            {
+                "name": "verificationResults",
+                "type": "form",
+                "displayName": "Verification Results",
+                "description": "Displays the verification results.",
+                "components": [
+                    {
+                        "name": "verificationResults",
+                        "type": "paragraph",
+                        "displayName": "Verification Results",
+                        "description": "Displays the verification results.",
+                        "content": "${saveAzureADApplicationCredentials.outputs.verificationResultsMarkdown}"
+                    }
+                ]
+            }
+        ]
+    }
+}

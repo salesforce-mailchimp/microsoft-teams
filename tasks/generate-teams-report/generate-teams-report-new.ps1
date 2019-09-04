@@ -5,12 +5,46 @@ param (
     #>
     [Parameter(Mandatory=$true)]
     [ValidateNotNullOrEmpty()]
-    [String]$office365CredentialsName
+    [String]$office365CredentialsName,
+
+    # Microsoft Graph Credentials Name
+    # The name of the Microsoft Graph credentials.
+    [Parameter(Mandatory=$true)]
+    [ValidateNotNullOrEmpty()]
+    [String]$microsoftGraphCredentialsName
 )
 @(
     "Get-SavedCredentials"
 ) | ForEach-Object -Process {
     . "$($PSScriptRoot)\..\..\functions\$($_).ps1"
+}
+
+function Get-MicrosoftGraphAuthenticationToken {
+    param(
+        $applicationId,
+        $clientSecret,
+        $username,
+        $password
+    )
+
+    $invokeWebRequestParams = @{
+        Uri     = "https://login.microsoftonline.com/common/oauth2/token"
+        Method  = "POST"
+        Headers = @{
+            'Content-Type' = "application/x-www-form-urlencoded"
+        }
+        Body    = @{
+            grant_type    = "password"
+            resource      = "https://graph.microsoft.com"
+            username      = $username
+            password      = $password
+            client_id     = $applicationId
+            client_secret = $clientSecret
+        } #| ConvertTo-Json
+    }
+    $response = Invoke-RestMethod @invokeWebRequestParams
+
+    return $response.access_token
 }
 
 # Retrieve the credentials object, username and password
@@ -27,12 +61,20 @@ $credentials = [PSCredential]::new(
     ($office365Password | ConvertTo-SecureString -AsPlainText -Force)
 )
 
+$microsoftGraphCredentialsObject = Get-SavedCredentials -CredentialsName $microsoftGraphCredentialsName -ApplicationCredentials
+if ($null -eq $microsoftGraphCredentialsObject) {
+    Write-Error "Failed to retrieve the Microsoft Graph credentials '$($microsoftGraphCredentialsName)'. Please check the name and try again."
+    exit
+}
+$applicationID = $microsoftGraphCredentialsObject.applicationId
+$clientSecret = $microsoftGraphCredentialsObject.clientSecret
+$domain = $microsoftGraphCredentialsObject.domain
+
 # Connecting
 Write-Information "Connecting"
 Connect-MicrosoftTeams -Credential $credentials
 
-Connect-MicrosoftTeamsAdminAccount -endpoint $Office365AdministrativeCredentials
-$token = Get-MicrosoftGraphAuthenticationToken -endpoint $MicroSoftGraphCredentials
+$adminToken = Get-MicrosoftGraphAuthenticationToken -Username $office365Username -Password $office365Password -ApplicationId $applicationID -ClientSecret $clientSecret
 
 Write-Information "Retrieving teams."
 $allTeams = Get-Team
@@ -48,6 +90,13 @@ $allUsers = @()
 $maxNumberOfTeams = 250
 
 foreach ($team in $allTeams) {
+    # Process error (To investigate the cause)
+    if ([String]::IsNullOrWhiteSpace($team.GroupId)) {
+        Write-Warning $team
+        continue
+    }
+
+    # Update the count
     if ($team.Visibility -eq "Public") {
         $numberOfPublicTeams++
     }
@@ -60,11 +109,13 @@ foreach ($team in $allTeams) {
         Uri     = "https://graph.microsoft.com/v1.0/groups/$($team.GroupId)/drive/root/children"
         Method  = "GET"
         Headers = @{
-            Authorization = "Bearer $($token)"
+            Authorization = "Bearer $($adminToken)"
         }
     }
     $response = Invoke-RestMethod @invokeWebRequestParams
     $allFileInformation = $response.Value
+
+    $earliestTime = (Get-Date).AddYears(-100)
 
     Write-Information "Retrieving channels in '$($team.DisplayName)'."
     $teamChannels = Get-TeamChannel -GroupId $team.GroupId
@@ -72,34 +123,34 @@ foreach ($team in $allTeams) {
         $channel | Add-Member -NotePropertyName "Team" -NotePropertyValue $team.DisplayName
         $allChannels += $channel
 
-        $teamFileInformation = $allFileInformation | Where-Object {$_.name -eq $channel.DisplayName}
+        $teamFileInformation = $allFileInformation | Where-Object { $_.name -eq $channel.DisplayName }
         $channel | Add-Member -NotePropertyName "TotalFileSize" -NotePropertyValue $teamFileInformation.size
         $channel | Add-Member -NotePropertyName "FileLastModifiedTime" -NotePropertyValue $teamFileInformation.lastModifiedDateTime
 
         Write-Information "Retrieving chat information for channel $($channel.DisplayName)"
-        $lastChatTime = (Get-Date).AddYears(-100)
-        $invokeWebRequestParams = @{
-            Uri     = "https://graph.microsoft.com/beta/teams/$($team.GroupId)/channels/$($channel.Id)/messages"
-            Method  = "GET"
-            Headers = @{
-                Authorization = "Bearer $($adminToken)"
-            }
-        }
+        $lastChatTime = $earliestTime
 
-        try{
+        try {
+            $invokeWebRequestParams = @{
+                Uri     = "https://graph.microsoft.com/beta/teams/$($team.GroupId)/channels/$($channel.Id)/messages"
+                Method  = "GET"
+                Headers = @{
+                    Authorization = "Bearer $($adminToken)"
+                }
+            }
+
             $response = Invoke-RestMethod @invokeWebRequestParams
             $chatCount = $response.'@odata.count'
-            $messages = $response.value
-        }
-        catch {
-            # 404 means there isn't any chat message
-        }
+            $channel | Add-Member -NotePropertyName "ChatCount" -NotePropertyValue $chatCount -Force
 
-        foreach($message in $messages) {
-            $messageTime = Get-Date -Date $message.createdDateTime
-            if($messageTime -gt $lastChatTime) {
+            $messages = $response.value
+
+            $latestMessage = $messages[0]
+            $messageTime = Get-Date -Date $latestMessage.createdDateTime
+            if ($messageTime -gt $lastChatTime) {
                 $lastChatTime = $messageTime
             }
+
             $invokeWebRequestParams = @{
                 Uri     = "https://graph.microsoft.com/beta/teams/$($team.GroupId)/channels/$($channel.Id)/messages/$($message.Id)/replies"
                 Method  = "GET"
@@ -109,15 +160,22 @@ foreach ($team in $allTeams) {
             }
             $response = Invoke-RestMethod @invokeWebRequestParams
 
-            if($response.'@odata.count' -gt 0) {
-                $replyTime = Get-Date -Date $response.value[0].createdDateTime
-                if($replyTime -gt $lastChatTime) {
-                    $lastChatTime = $replyTime
+            if ($response.'@odata.count' -gt 0) {
+                $latestReplyTime = Get-Date -Date $response.value[0].createdDateTime
+                if ($latestReplyTime -gt $lastChatTime) {
+                    $lastChatTime = $latestReplyTime
                 }
             }
         }
-
-        $channel | Add-Member -NotePropertyName "LastChatTime" -NotePropertyValue $lastChatTime -Force
+        catch {
+            # 404 means there isn't any chat message
+        }
+        finally {
+            if($lastChatTime -eq $earliestTime) {
+                $lastChatTime = ""
+            }
+            $channel | Add-Member -NotePropertyName "LastChatTime" -NotePropertyValue $lastChatTime -Force
+        }
     }
     #$team | Add-Member -NotePropertyName "Channels" -NotePropertyValue $teamChannels -Force
     $team | Add-Member -NotePropertyName "NumberOfChannels" -NotePropertyValue $teamChannels.Length -Force

@@ -1,0 +1,7 @@
+{
+    "apiVersion": "v1",
+    "name": "save-azure-ad-application-credentials",
+    "displayName": "Yixiao001: Save Azure AD Application Credentials",
+    "description": "Saves a set of Azure AD application credentials",
+    "keywords": []
+}
