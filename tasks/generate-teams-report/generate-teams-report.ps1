@@ -209,8 +209,8 @@ $numberOfChannelsDistribution = @($1To50, $51To100, $101To150, $151Plus)
 $templateFilePath = "$($PSScriptRoot)\TeamsReportTemplate.xlsx"
 $reportFilePath = "$($PSScriptRoot)\TeamsReport.xlsx"
 
-$templateFilePath = "C:\Users\yshen\Desktop\TeamsReportTemplate.xlsx"
-$reportFilePath = "C:\Users\yshen\DesktopTeamsReport.xlsx"
+#$templateFilePath = "C:\Users\yshen\Desktop\TeamsReportTemplate.xlsx"
+#$reportFilePath = "C:\Users\yshen\DesktopTeamsReport.xlsx"
 
 Copy-Item -Path $templateFilePath -Destination $reportFilePath
 
