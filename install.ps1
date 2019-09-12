@@ -10,6 +10,7 @@ Import-BT_Module BitTitan.Runbooks.Common
 Import-BT_Module BitTitan.Runbooks.Csv
 
 Install-Module -Name MicrosoftTeams -RequiredVersion 1.0.1 -Scope CurrentUser -AllowClobber -Force
+Install-Module AzureAD -RequiredVersion 2.0.2.26 -Scope CurrentUser -AllowClobber -Force -Verbose
 
 # Update this so that it can be executed during build?yes
 # aaa
