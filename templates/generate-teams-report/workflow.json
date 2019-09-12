@@ -67,7 +67,7 @@
                 "type": "packageTask",
                 "displayName": "Generate Report",
                 "description": "Generates a report.",
-                "package": "yixiao001/microsoft-teams@0.1.2",
+                "package": "yixiao001/microsoft-teams@0.1.3",
                 "task": "generate-teams-report",
                 "inputs": {
                     "office365CredentialsName": "${inputForm.outputs.office365AdminCredentialsName}",

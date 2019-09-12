@@ -14,9 +14,59 @@ param (
     [String]$microsoftGraphCredentialsName
 )
 @(
-    "Get-SavedCredentials"
+    "Get-SavedCredentials",
+    "Connect-AzureADAdminAccount",
+    "ConvertTo-Array"
 ) | ForEach-Object -Process {
     . "$($PSScriptRoot)\..\..\functions\$($_).ps1"
+}
+
+# Retrieve the credentials object, username and password
+$office365CredentialsObject = Get-SavedCredentials -CredentialsName $office365CredentialsName -UserCredentials
+if ($null -eq $office365CredentialsObject) {
+    Write-Warning "Failed to retrieve the Office 365 credentials '$($office365CredentialsName)'. Please check the name and try again."
+    exit
+}
+$office365Username = $office365CredentialsObject.username
+$office365Password = $office365CredentialsObject.password
+
+
+
+$microsoftGraphCredentialsObject = Get-SavedCredentials -CredentialsName $microsoftGraphCredentialsName -ApplicationCredentials
+if ($null -eq $microsoftGraphCredentialsObject) {
+    Write-Error "Failed to retrieve the Microsoft Graph credentials '$($microsoftGraphCredentialsName)'. Please check the name and try again."
+    exit
+}
+$applicationID = $microsoftGraphCredentialsObject.applicationId
+$clientSecret = $microsoftGraphCredentialsObject.clientSecret
+$domain = $microsoftGraphCredentialsObject.domain
+
+function Get-MessagesJson {
+    param(
+        $Messages,
+        $TeamId,
+        $ChannelId,
+        $AdminToken
+    )
+    $messagesJson = @()
+    foreach ($message in $messages) {
+
+        $repliesJson = @()
+        $invokeWebRequestParams = @{
+            Uri     = "https://graph.microsoft.com/beta/teams/$($team.GroupId)/channels/$($channel.Id)/messages/$($message.Id)/replies"
+            Method  = "GET"
+            Headers = @{
+                Authorization = "Bearer $($adminToken)"
+            }
+        }
+        $repliesResponse = Invoke-RestMethod @invokeWebRequestParams
+        foreach ($reply in $repliesResponse.value) {
+            $repliesJson += ($reply | ConvertTo-Json -Depth 10)
+        }
+        $message | Add-Member -NotePropertyName "Replies" -NotePropertyValue $repliesJson -Force
+        $messagesJson += ($message | ConvertTo-Json -Depth 10)
+    }
+    return $messagesJson
 }
 
 function Get-MicrosoftGraphAuthenticationToken {
@@ -59,59 +109,13 @@ function Update-Statistics {
         }) | Out-Null
 }
 
-function Get-MessagesJson {
-    param(
-        $Messages,
-        $TeamId,
-        $ChannelId,
-        $AdminToken
-    )
-    $messagesJson = @()
-    foreach ($message in $messages) {
-
-        $repliesJson = @()
-        $invokeWebRequestParams = @{
-            Uri     = "https://graph.microsoft.com/beta/teams/$($team.GroupId)/channels/$($channel.Id)/messages/$($message.Id)/replies"
-            Method  = "GET"
-            Headers = @{
-                Authorization = "Bearer $($adminToken)"
-            }
-        }
-        $repliesResponse = Invoke-RestMethod @invokeWebRequestParams
-        foreach ($reply in $repliesResponse.value) {
-            $repliesJson += ($reply | ConvertTo-Json -Depth 10)
-        }
-        $message | Add-Member -NotePropertyName "Replies" -NotePropertyValue $repliesJson -Force
-        $messagesJson += ($message | ConvertTo-Json -Depth 10)
-    }
-    return $messagesJson
-}
-
-# Retrieve the credentials object, username and password
-$office365CredentialsObject = Get-SavedCredentials -CredentialsName $office365CredentialsName -UserCredentials
-if ($null -eq $office365CredentialsObject) {
-    Write-Warning "Failed to retrieve the Office 365 credentials '$($office365CredentialsName)'. Please check the name and try again."
-    exit
-}
-$office365Username = $office365CredentialsObject.username
-$office365Password = $office365CredentialsObject.password
-
 $credentials = [PSCredential]::new(
     $office365Username,
     ($office365Password | ConvertTo-SecureString -AsPlainText -Force)
 )
 
-$microsoftGraphCredentialsObject = Get-SavedCredentials -CredentialsName $microsoftGraphCredentialsName -ApplicationCredentials
-if ($null -eq $microsoftGraphCredentialsObject) {
-    Write-Error "Failed to retrieve the Microsoft Graph credentials '$($microsoftGraphCredentialsName)'. Please check the name and try again."
-    exit
-}
-$applicationID = $microsoftGraphCredentialsObject.applicationId
-$clientSecret = $microsoftGraphCredentialsObject.clientSecret
-$domain = $microsoftGraphCredentialsObject.domain
-
 # Connect to platforms
-Write-Information "Connecting"
+Write-Information "Connecting to platforms."
 Connect-MicrosoftTeams -Credential $credentials
 Connect-AzureADAdminAccount -Username $office365Username -Password ($office365Password | ConvertTo-SecureString -AsPlainText -Force)
 $adminToken = Get-MicrosoftGraphAuthenticationToken -Username $office365Username -Password $office365Password -ApplicationId $applicationID -ClientSecret $clientSecret
@@ -189,6 +193,8 @@ foreach ($team in $allTeams) {
 
     Write-Information "Retrieving channels in '$($team.DisplayName)'."
     $teamChannels = Get-TeamChannel -GroupId $team.GroupId
+
+    # Retrieve more information for each channel
     foreach ($channel in $teamChannels) {
         $lastActivityTime = $earliestTime
         $channel | Add-Member -NotePropertyName "Team" -NotePropertyValue $team.DisplayName
@@ -204,7 +210,7 @@ foreach ($team in $allTeams) {
         }
 
         # Retrieve chat information
-        Write-Information "Retrieving chat information for channel $($channel.DisplayName)"
+        Write-Information "Retrieving chat information for channel '$($channel.DisplayName)'"
         $lastChatTime = $earliestTime
         try {
             # Retrieve chat messages
@@ -290,9 +296,49 @@ foreach ($team in $allTeams) {
 function Get-StringSimilarity {
     param(
         $String1,
-        $String2
+        $String2,
+        $Threshold = 0.7
     )
-    return Get-Random -Maximum 100000
+
+    # WARNING:
+    # This function only works if there are no similar words within the strings,
+    # and the order of words doesn't matter
+
+    # Split the strings into words
+    $string1Words = $String1.Split(" ") | ForEach-Object { $_.ToLower() }
+    $string2Words = $String2.Split(" ") | ForEach-Object { $_.ToLower() }
+
+    # Count the number of matches
+    $matchCount = 0
+    foreach ($word1 in $string1Words) {
+        foreach ($word2 in $string2Words) {
+            if (Get-WordSimilarity -Word1 $word1 -Word2 $word2 -Threshold $Threshold) {
+                $matchCount++
+                break
+            }
+        }
+    }
+
+    # Return the similarity of two strings (a number between 0 and 1)
+    return ($matchCount * $matchCount) / ($string1Words.Length * $string2Words.Length)
+}
+
+# This function calculates the similarity between two words
+function Get-WordSimilarity {
+    param(
+        $Word1,
+        $Word2,
+        $Threshold = 0.7
+    )
+
+    # Get the normalized edit distance between two words
+    $similarity = Get-LevenshteinDistance -String1 $Word1 -String2 $Word2 -Normalize
+
+    # Decide the result based on the similarity and threshold
+    if ($similarity -gt $Threshold) {
+        return $true
+    }
+    return $false
 }
 
 # This function returns similar string pairs within a collection of strings
@@ -330,21 +376,87 @@ function Get-SimilarStrings {
     }
 }
 
-$numTopResults = 5
-$threshold = 8000
+function Get-LevenshteinDistance {
+    <#
+        .SYNOPSIS
+            Get the Levenshtein distance between two strings.
+        .DESCRIPTION
+            The Levenshtein Distance is a way of quantifying how dissimilar two strings (e.g., words) are to one another by counting the minimum number of operations required to transform one string into the other.
+        .EXAMPLE
+            Get-LevenshteinDistance 'kitten' 'sitting'
+        .LINK
+            http://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#C.23
+            http://en.wikipedia.org/wiki/Edit_distance
+            https://communary.wordpress.com/
+            https://github.com/gravejester/Communary.PASM
+        .NOTES
+            Author: Øyvind Kallstad
+            Date: 07.11.2014
+            Version: 1.0
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Position = 0)]
+        [string]$String1,
+
+        [Parameter(Position = 1)]
+        [string]$String2,
+
+        # A normalized output will fall in the range 0 (perfect match) to 1 (no match).
+        [Parameter()]
+        [switch]$NormalizeOutput
+    )
+
+    $d = New-Object 'Int[,]' ($String1.Length + 1), ($String2.Length + 1)
+
+    try {
+        for ($i = 0; $i -le $d.GetUpperBound(0); $i++) {
+            $d[$i, 0] = $i
+        }
+
+        for ($i = 0; $i -le $d.GetUpperBound(1); $i++) {
+            $d[0, $i] = $i
+        }
+
+        for ($i = 1; $i -le $d.GetUpperBound(0); $i++) {
+            for ($j = 1; $j -le $d.GetUpperBound(1); $j++) {
+                $cost = [Convert]::ToInt32((-not($String1[$i-1] -eq $String2[$j-1])))
+                $min1 = $d[($i-1), $j] + 1
+                $min2 = $d[$i, ($j-1)] + 1
+                $min3 = $d[($i-1), ($j-1)] + $cost
+                $d[$i, $j] = [Math]::Min([Math]::Min($min1, $min2), $min3)
+            }
+        }
+
+        $distance = ($d[$d.GetUpperBound(0), $d.GetUpperBound(1)])
+
+        if ($NormalizeOutput) {
+            return (1 - ($distance) / ([Math]::Max($String1.Length, $String2.Length)))
+        }
+
+        else {
+            return $distance
+        }
+    }
+
+    catch {
+        Write-Warning $_.Exception.Message
+    }
+}
+
 ###
 # Get similar names
 ####
 
 # Get similar team names
 Write-Information "Calculating name similarity for teams."
-$similarTeamNames = Get-SimilarStrings -Strings $allTeams.DisplayName -StringName "TeamName" -Threshold 99990
+$similarTeamNames = Get-SimilarStrings -Strings (ConvertTo-Array $allTeams.DisplayName) -StringName "TeamName" -Threshold 0.4
 
 # Get similar channel names for channels in the same team
 $similarChannelNamesWithSameTeam = @()
 foreach ($team in $allTeams) {
-    Write-Information "Calculating name similarity for channels that are in $($team.DisplayName)."
-    $similarNames = Get-SimilarStrings -Strings $team.Channels.DisplayName -StringName "ChannelName" -Threshold 99990
+    Write-Information "Calculating name similarity for channels that are in '$($team.DisplayName)'."
+    $similarNames = Get-SimilarStrings -Strings (ConvertTo-Array $team.Channels.DisplayName) -StringName "ChannelName" -Threshold 0.4
     foreach ($pair in $similarNames) {
         $pair | Add-Member -NotePropertyName "Team" -NotePropertyValue $team.DisplayName
     }
@@ -356,7 +468,7 @@ $channelsGroupedByOwner = $allChannels | Group-Object -Property "OwnerDepartment
 $similarChannelNamesWithSameOwner = @()
 foreach ($owner in $channelsGroupedByOwner) {
     Write-Information "Calculating name similarity for channels whose owners are in $($owner.Name)."
-    $similarNames = Get-SimilarStrings -Strings $owner.Group.DisplayName -StringName "ChannelName" -Threshold 99990
+    $similarNames = Get-SimilarStrings -Strings (ConvertTo-Array $owner.Group.DisplayName) -StringName "ChannelName" -Threshold 0.4
     foreach ($pair in $similarNames) {
         $pair | Add-Member -NotePropertyName "OwnerDepartment" -NotePropertyValue $owner.Name
     }
@@ -394,13 +506,14 @@ Update-Statistics -Statistics $stats -Key "SimilarTeamNames" -Value $similarTeam
 Update-Statistics -Statistics $stats -Key "SimilarChannelNamesWithSameTeam" -Value $similarChannelNamesWithSameTeam.Length
 Update-Statistics -Statistics $stats -Key "SimilarChannelNamesWithSameOwner" -Value $similarChannelNamesWithSameOwner.Length
 
+# Declare the paths of the report template and the report file
 $templateFilePath = "$($PSScriptRoot)\TeamsReportTemplate.xlsx"
 $reportFilePath = "$($PSScriptRoot)\TeamsReport.xlsx"
 
 #$templateFilePath = "C:\Users\yshen\Desktop\TeamsReportTemplate.xlsx"
 #$reportFilePath = "C:\Users\yshen\Desktop\TeamsReport.xlsx"
 
-# Save all the date to an Excel file
+# Save all the data to an Excel file
 Copy-Item -Path $templateFilePath -Destination $reportFilePath
 $excelPackage = $allUsers | Export-Excel -Path $reportFilePath -WorksheetName "Users" -PassThru
 $excelPackage = $allChannels | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Channels" -PassThru
@@ -412,6 +525,7 @@ $excelPackage = $similarChannelNamesWithSameOwner | Export-Excel -ExcelPackage $
 $excelPackage = $stats | Export-Excel -ExcelPackage $excelPackage -WorksheetName "Stats" -PassThru
 Close-ExcelPackage -ExcelPackage $excelPackage #-Show
 Write-Information "Finished."
+
 
 # Store the Excel workbook base64 encoded bytes in a file in the instance scope
 $excelWorkbookContentsFileName = "$(New-Guid).txt"
