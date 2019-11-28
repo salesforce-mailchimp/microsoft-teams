@@ -124,7 +124,7 @@ Write-Information "Retrieving teams."
 $allTeams = Get-Team
 
 Write-Information "Retrieving Azure AD users."
-$allAzureADUsers = Get-AzureADUser
+$allAzureADUsers = Get-AzureADUser -All:$true
 
 # Initialize variables
 $numberOfPrivateTeams = 0

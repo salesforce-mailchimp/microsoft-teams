@@ -1,7 +1,8 @@
 {
     "apiVersion": "v1",
     "name": "generate-teams-report",
-    "displayName": "Yixiao001: Generate Teams Report",
+    "priority": 3,
+    "displayName": "​​​Yixiao001: Generate Teams Report",
     "description": "Generates a report of a Microsoft Teams tenant.",
     "keywords": []
   }
